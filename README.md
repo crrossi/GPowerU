@@ -2,7 +2,7 @@
 GPowerU Tool (APE Lab, INFN Roma1)
 
 
-GPowerU is a simple tool able to measure the power consumption of a CUDA kernel in specific points of the device code and to generate the complete power profile. 
+GPowerU is a simple tool able to measure the power consumption of a CUDA kernel in specific points of the device code and to generate the power profile of a GPU application. 
 To do so, we used the NVIDIA Management Library (NVML): a C-based programmatic interface for monitoring and managing various states within NVIDIA GPU devices. 
 
 Power measurements are collected with a configurable time period and provided as a .csv file (nvml_power_profile.csv).
