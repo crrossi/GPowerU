@@ -16,7 +16,7 @@
   	{
       int index = blockIdx.x * blockDim.x + threadIdx.x;
       int stride = blockDim.x * gridDim.x;
-      take_GPU_time(); //Checkpoint power measure __device__ function
+//      take_GPU_time(); //Checkpoint power measure __device__ function
       __syncthreads();
       
       
@@ -26,20 +26,20 @@
        
       __syncthreads();
       
-      take_GPU_time(); //Checkpoint power measure __device__ function
+  //    take_GPU_time(); //Checkpoint power measure __device__ function
       for (int i = index; i < n; i += stride){
       	for(int k=0; k<100000; k++) y[i] = x[i] + y[i];
       }
       __syncthreads();
       
-      take_GPU_time(); //Checkpoint power measure __device__ function
+    //  take_GPU_time(); //Checkpoint power measure __device__ function
       for (int i = index; i < n; i += stride){
       	for(int k=0; k<1000; k++) y[i] = x[i] + y[i];
         }
       __syncthreads();
 		
 		
-      take_GPU_time(true); //Checkpoint power measure __device__ function (last)
+     // take_GPU_time(true); //Checkpoint power measure __device__ function (last)
     } 
  
 
@@ -73,8 +73,8 @@ int main( int argc, char** argv)
       	add<<<numBlocks, blockSize>>>(N, x, y);
       
        	//Checkpoint power measure CPU function ==> it calls its own cudaDeviceSynchronize() 
-      	GPowerU_checkpoints();
-     
+     // 	GPowerU_checkpoints();
+     	cudaDeviceSynchronize();
       	// Free memory
       	checkCudaErrors(cudaFree(x));
       	checkCudaErrors(cudaFree(y));

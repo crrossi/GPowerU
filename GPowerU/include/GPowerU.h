@@ -19,10 +19,12 @@
 
 #include <cuda.h>
 
-#define SAMPLE_MAX_SIZE_DEFAULT 10000000
+#define SAMPLE_MAX_SIZE_DEFAULT 1000000
 #define MAX_CHECKPOINTS 64
+#define MAX_DEVICES 4
 
 #define ROOT_ENABLED 0
+#define MULTIGPU_ENABLED 0
 #define TIME_STEP 0.00001  //Interval for sampling (in s)
 #define POWER_THRESHOLD 20 
 
@@ -47,8 +49,10 @@ int GPowerU_init(); //Initializations ==> enable the NVML library, starts CPU th
 void grapher(); //ROOT graph making function
 #endif
 
+#if MULTIGPU_ENABLED
 __device__ void take_GPU_time(bool last); //Checkpoint power measure __device__ function 
 void GPowerU_checkpoints(); //Checkpoint power measure CPU function 
+#endif
 int GPowerU_end(); //Ends power monitoring, returns data output files
 
 
@@ -58,15 +62,17 @@ int GPowerU_end(); //Ends power monitoring, returns data output files
 
 int terminate_thread; //END PROGRAM
 nvmlDevice_t nvDevice;
-__managed__ nvmlReturn_t nvResult;
+//__managed__ nvmlReturn_t nvResult;
+nvmlReturn_t nvResult;
 
 //Time sampling arrays for the power monitoring curve (thread_times) and kernel checkpoints (device_times)
-double thread_times[SAMPLE_MAX_SIZE_DEFAULT];
+double thread_times[MAX_DEVICES][SAMPLE_MAX_SIZE_DEFAULT];
 double device_times[SAMPLE_MAX_SIZE_DEFAULT];
 
 //Power sampling arrays for the power monitoring curve (powers) and kernel checkpoints (powerz)
-double thread_powers[SAMPLE_MAX_SIZE_DEFAULT];
+double thread_powers[MAX_DEVICES][SAMPLE_MAX_SIZE_DEFAULT];
 double device_powers[SAMPLE_MAX_SIZE_DEFAULT];
+
 
 int n_values; //Total number of data taken
 int deviceID; //Device id
@@ -81,11 +87,12 @@ unsigned int core_clock, mem_clock;
 
 float power_peak; //Maximum power value measured
 
-
+#if MULTIGPU_ENABLED
 //Variable used in the kernel checkpoint power data taking
 __managed__ int kernel_checkpoints[MAX_CHECKPOINTS]; 
 __managed__ int max_points;
 __managed__ bool finish;
-
+#endif
+unsigned int device_count;
 
 #endif

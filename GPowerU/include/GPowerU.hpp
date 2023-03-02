@@ -16,39 +16,43 @@ void *threadWork(void * arg) {
 
 	while (!terminate_thread) {
 		//GET POWER SAMPLES
+		for(int d=0; d < device_count; d++){
+				nvResult = nvmlDeviceGetHandleByIndex(d, &nvDevice);
 		    	nvResult = nvmlDeviceGetPowerUsage(nvDevice, &power);
             nvResult = nvmlDeviceGetUtilizationRates (nvDevice, &util);
 
-		if (NVML_SUCCESS != nvResult) {
-			printf("Failed to get power usage: %s\n", nvmlErrorString(nvResult));
-			pthread_exit(NULL);
-		}
+				if (NVML_SUCCESS != nvResult) {
+					printf("Failed to get power usage: %s\n", nvmlErrorString(nvResult));
+					pthread_exit(NULL);
+				}
 		
 		
-		if(i < SAMPLE_MAX_SIZE_DEFAULT && (power > POWER_THRESHOLD*1000.0  || thread_powers[0] > POWER_THRESHOLD*1000.0)) {
+				if(i < SAMPLE_MAX_SIZE_DEFAULT && (power > POWER_THRESHOLD*1000.0  || thread_powers[d][0] > POWER_THRESHOLD*1000.0)) {
 		
-			if(i==0) printf("********STARTING GPU WORK********");
-           		gettimeofday(&tv_aux,NULL);
+				if(i==0) printf("********STARTING GPU WORK********");
+           			gettimeofday(&tv_aux,NULL);
 
-            		thread_times[i] = (tv_aux.tv_sec-tv_start.tv_sec)*1000000;
-            		thread_times[i] += (tv_aux.tv_usec-tv_start.tv_usec);
+            		thread_times[d][i] = (tv_aux.tv_sec-tv_start.tv_sec)*1000000;
+            		thread_times[d][i] += (tv_aux.tv_usec-tv_start.tv_usec);
            
-            		thread_powers[i] = power;
-	    		i++;
+            		thread_powers[d][i] = power;
+	    				//i++;
 
-		}
-		else{
-			if(i == SAMPLE_MAX_SIZE_DEFAULT) {
-				printf("ERROR: POWER VECTOR SIZE EXCEEDED!\n");
-				pthread_exit(NULL);
-			}
-			if(!not_enough){
-				printf("NOT ENOUGH POWER!\n");
-				not_enough=1;
-			}
-		}
+				}
+				else{
+					if(i == SAMPLE_MAX_SIZE_DEFAULT) {
+						printf("ERROR: POWER VECTOR SIZE EXCEEDED!\n");
+						pthread_exit(NULL);
+					}
+					if(!not_enough){
+						printf("NOT ENOUGH POWER!\n");
+						not_enough=1;
+					}
+				}
 
-		//i++;
+		
+		}
+		i++;
 		n_values = i;
 
 		sleep(TIME_STEP);
@@ -71,26 +75,32 @@ float DataOutput() {
    power_peak=0;
 	
 	FILE  *fp2;
-	fp2 = fopen("data/nvml_power_profile.csv", "w+");
+	
+	for(int d=0; d < device_count; d++){
+		std::string s = "data/nvml_power_profile";
+		s = s + std::to_string(d);
+		s = s + ".csv";
+		fp2 = fopen(s.c_str(), "w+");
 
-	fprintf(fp2,"#sep=;\n#Timestamp [us];Power measure [W]");
+		fprintf(fp2,"#sep=;\n#Timestamp [us];Power measure [W]");
 
-	for(int i=0; i<n_values; i++) {
-        fprintf(fp2, "\n%.6f;%.4f", (thread_times[i]-thread_times[0])/1000000, thread_powers[i]/1000.0);
+		for(int i=0; i<n_values; i++) {
+        fprintf(fp2, "\n%.6f;%.4f", (thread_times[d][i]-thread_times[d][0])/1000000, thread_powers[d][i]/1000.0);
 		
-        if (thread_powers[i] > power_peak) {
-        		power_peak = thread_powers[i];
+        if (thread_powers[d][i] > power_peak) {
+        		power_peak = thread_powers[d][i];
 		  }
 
-        if ( thread_powers[i]/1000.0 > 35 && begin_gpu == -1 ) begin_gpu = i;
-        if ( thread_powers[i]/1000.0 < 35 && begin_gpu != -1 ) end_gpu = i;
+        if ( thread_powers[d][i]/1000.0 > 35 && begin_gpu == -1 ) begin_gpu = i;
+        if ( thread_powers[d][i]/1000.0 < 35 && begin_gpu != -1 ) end_gpu = i;
 
-        if (thread_powers[i]/1000.0 >= threshold) {
-        		acc0 = acc0 + thread_powers[i];
+        if (thread_powers[d][i]/1000.0 >= threshold) {
+        		acc0 = acc0 + thread_powers[d][i];
          	values_threshold++;
         }
-	}
-   
+		}
+		fclose(fp2);
+   }
    if (values_threshold>0) {
    	  p_average = acc0 / (values_threshold*1.0);
    }
@@ -100,12 +110,12 @@ float DataOutput() {
    }
     
 
-	interval = thread_times[n_values-1] - thread_times[0];
-   interval_GPU = thread_times[end_gpu] - thread_times[begin_gpu];
+	interval = thread_times[0][n_values-1] - thread_times[0][0];
+   interval_GPU = thread_times[0][end_gpu] - thread_times[0][begin_gpu];
 
    printf("\tAt current frequency (%d,%d) MHz:  Average Power: %.2f W;  Max Power: %.2f W;  Sampling Duration: %.2f ms;  GPU active duration: %.2f ms \n", mem_clock, core_clock, p_average/1000.0, power_peak/1000.0, (interval)/1000, interval_GPU/1000);
    
-   fclose(fp2);
+   
 
 	return 0;
 }
@@ -113,16 +123,18 @@ float DataOutput() {
 //Initializations ==> enable the NVML library, starts CPU thread for the power monitoring. It is synchronized with the start time of the program
 int GPowerU_init() {
 	//sleep(wait);
-	unsigned int device_count;
+	//unsigned int device_count;
 	gettimeofday(&start_time,NULL);
 	// unsigned int clock;
 	int a;
    int major;
    int check = mkdir("data", 0777);
    
+#if MULTIGPU_ENABLED
    for (int i = 0; i < MAX_CHECKPOINTS; i++) {
         kernel_checkpoints[i]= 0;
    }
+#endif
      
     CUresult result;
     CUdevice device = 0;
@@ -216,7 +228,7 @@ void grapher(){
 }
 #endif
 
-
+#if MULTIGPU_ENABLED
 //Checkpoint power measure __device__ function ==> last to be set =1 for the latest func call
 __device__ void take_GPU_time(bool last = 0){
 	static int i=0;
@@ -262,7 +274,7 @@ void GPowerU_checkpoints(){
    finish=0;
    
  }
-
+#endif
 
 //Ends power monitoring, returns data output files
 int GPowerU_end(int zz=0) {
