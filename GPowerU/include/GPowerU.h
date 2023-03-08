@@ -24,9 +24,9 @@
 #define MAX_DEVICES 4
 
 #define ROOT_ENABLED 0
-#define MULTIGPU_ENABLED 0
+#define MULTIGPU_DISABLED 0
 #define TIME_STEP 0.00001  //Interval for sampling (in s)
-#define POWER_THRESHOLD 20 
+#define POWER_THRESHOLD 0 
 
 #if ROOT_ENABLED
 #include "TCanvas.h"
@@ -42,6 +42,7 @@
  *++++++++++++++++++++++++++++++++++++++++++++++++++*/
 
 void *threadWork(void*); //CPU thread managing the parallel power data taking during the kernel execution
+
 float DataOutput(); //Generate the output samples files
 int GPowerU_init(); //Initializations ==> enable the NVML library, starts CPU thread for the power monitoring
 
@@ -49,7 +50,7 @@ int GPowerU_init(); //Initializations ==> enable the NVML library, starts CPU th
 void grapher(); //ROOT graph making function
 #endif
 
-#if MULTIGPU_ENABLED
+#if MULTIGPU_DISABLED
 __device__ void take_GPU_time(bool last); //Checkpoint power measure __device__ function 
 void GPowerU_checkpoints(); //Checkpoint power measure CPU function 
 #endif
@@ -61,7 +62,8 @@ int GPowerU_end(); //Ends power monitoring, returns data output files
  *++++++++++++++++++++++++++++++++++++++++++++++++++*/
 
 int terminate_thread; //END PROGRAM
-nvmlDevice_t nvDevice;
+
+nvmlDevice_t nvDevice[MAX_DEVICES];
 //__managed__ nvmlReturn_t nvResult;
 nvmlReturn_t nvResult;
 
@@ -83,11 +85,12 @@ struct timeval start_time; //Time for synchronizing threadWork() and checkpoint(
 
 pthread_t thread_sampler; //Thread managing the continuos power data taking
 
+
 unsigned int core_clock, mem_clock;
 
 float power_peak; //Maximum power value measured
 
-#if MULTIGPU_ENABLED
+#if MULTIGPU_DISABLED
 //Variable used in the kernel checkpoint power data taking
 __managed__ int kernel_checkpoints[MAX_CHECKPOINTS]; 
 __managed__ int max_points;

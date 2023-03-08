@@ -16,7 +16,7 @@
   	{
       int index = blockIdx.x * blockDim.x + threadIdx.x;
       int stride = blockDim.x * gridDim.x;
-//      take_GPU_time(); //Checkpoint power measure __device__ function
+//    take_GPU_time(); //Checkpoint power measure __device__ function
       __syncthreads();
       
       
@@ -28,13 +28,13 @@
       
   //    take_GPU_time(); //Checkpoint power measure __device__ function
       for (int i = index; i < n; i += stride){
-      	for(int k=0; k<100000; k++) y[i] = x[i] + y[i];
+      	for(int k=0; k<1000; k++) y[i] = x[i] + y[i];
       }
       __syncthreads();
       
     //  take_GPU_time(); //Checkpoint power measure __device__ function
       for (int i = index; i < n; i += stride){
-      	for(int k=0; k<1000; k++) y[i] = x[i] + y[i];
+      	for(int k=0; k<10000; k++) y[i] = x[i] + y[i];
         }
       __syncthreads();
 		
@@ -51,6 +51,7 @@ int numBlocks = (64 + blockSize - 1) / blockSize;
      
 int main( int argc, char** argv)
     {	
+    		 
 //Initializations ==> enable the NVML library, starts CPU thread for the power monitoring,  
 	if ( GPowerU_init() != 0 ) {
 		fprintf ( stderr, "%s: error: initializing...\n", argv[0] );
@@ -70,17 +71,18 @@ int main( int argc, char** argv)
       	}		
       
       	//Launch the GPU kernel
+			
       	add<<<numBlocks, blockSize>>>(N, x, y);
       
        	//Checkpoint power measure CPU function ==> it calls its own cudaDeviceSynchronize() 
-     // 	GPowerU_checkpoints();
-     	cudaDeviceSynchronize();
+     		//GPowerU_checkpoints();
+     		cudaDeviceSynchronize();
       	// Free memory
       	checkCudaErrors(cudaFree(x));
       	checkCudaErrors(cudaFree(y));
      	
      	//Ends power monitoring, returns data output files
-      	if ( GPowerU_end(5) != 0 )
+      	if ( GPowerU_end(2) != 0 )
 	{
 		fprintf ( stderr, " error: terminating...\n" );
 		_exit (1);

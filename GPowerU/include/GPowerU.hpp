@@ -5,21 +5,19 @@
 
 //CPU thread managing the parallel power data taking during the kernel execution
 void *threadWork(void * arg) {
-	unsigned int power;
+	unsigned int power[MAX_DEVICES];
 	int i=0;
 	bool not_enough=0;
    struct timeval tv_start, tv_aux;
-   nvmlUtilization_t util;
 	struct timeval *time = (struct timeval *) arg;
 	
    tv_start=*time;
-
+	 printf("************STARTING THREAD**************\n");
 	while (!terminate_thread) {
 		//GET POWER SAMPLES
 		for(int d=0; d < device_count; d++){
-				nvResult = nvmlDeviceGetHandleByIndex(d, &nvDevice);
-		    	nvResult = nvmlDeviceGetPowerUsage(nvDevice, &power);
-            nvResult = nvmlDeviceGetUtilizationRates (nvDevice, &util);
+			       
+ 		      nvResult = nvmlDeviceGetPowerUsage(nvDevice[d], &power[d]);
 
 				if (NVML_SUCCESS != nvResult) {
 					printf("Failed to get power usage: %s\n", nvmlErrorString(nvResult));
@@ -27,15 +25,17 @@ void *threadWork(void * arg) {
 				}
 		
 		
-				if(i < SAMPLE_MAX_SIZE_DEFAULT && (power > POWER_THRESHOLD*1000.0  || thread_powers[d][0] > POWER_THRESHOLD*1000.0)) {
-		
-				if(i==0) printf("********STARTING GPU WORK********");
-           			gettimeofday(&tv_aux,NULL);
+				if(i < SAMPLE_MAX_SIZE_DEFAULT && (power[d] > POWER_THRESHOLD*1000.0  || thread_powers[d][0] > POWER_THRESHOLD*1000.0)) {
+				
+				if(i==0) printf("******STARTING GPU WORK******\n");
+           				gettimeofday(&tv_aux,NULL);
+					
 
-            		thread_times[d][i] = (tv_aux.tv_sec-tv_start.tv_sec)*1000000;
-            		thread_times[d][i] += (tv_aux.tv_usec-tv_start.tv_usec);
+            					thread_times[d][i] = (tv_aux.tv_sec-tv_start.tv_sec)*1000000;
+            					thread_times[d][i] += (tv_aux.tv_usec-tv_start.tv_usec);
            
-            		thread_powers[d][i] = power;
+            					thread_powers[d][i] = power[d];
+					
 	    				//i++;
 
 				}
@@ -87,9 +87,8 @@ float DataOutput() {
 		for(int i=0; i<n_values; i++) {
         fprintf(fp2, "\n%.6f;%.4f", (thread_times[d][i]-thread_times[d][0])/1000000, thread_powers[d][i]/1000.0);
 		
-        if (thread_powers[d][i] > power_peak) {
+        if (thread_powers[d][i] > power_peak) 
         		power_peak = thread_powers[d][i];
-		  }
 
         if ( thread_powers[d][i]/1000.0 > 35 && begin_gpu == -1 ) begin_gpu = i;
         if ( thread_powers[d][i]/1000.0 < 35 && begin_gpu != -1 ) end_gpu = i;
@@ -122,43 +121,18 @@ float DataOutput() {
 
 //Initializations ==> enable the NVML library, starts CPU thread for the power monitoring. It is synchronized with the start time of the program
 int GPowerU_init() {
-	//sleep(wait);
-	//unsigned int device_count;
 	gettimeofday(&start_time,NULL);
-	// unsigned int clock;
 	int a;
-   int major;
    int check = mkdir("data", 0777);
    
-#if MULTIGPU_ENABLED
+#if MULTIGPU_DISABLED
    for (int i = 0; i < MAX_CHECKPOINTS; i++) {
         kernel_checkpoints[i]= 0;
    }
 #endif
      
-    CUresult result;
-    CUdevice device = 0;
-
-    result = cuInit(0);
-    if (result != CUDA_SUCCESS) {
-        printf("Error code %d on cuInit\n", result);
-        exit(-1);
-    }
-    result = cuDeviceGet(&device,0);
-    if (result != CUDA_SUCCESS) {
-        printf("Error code %d on cuDeviceGet\n", result);
-        exit(-1);
-    }
-
-    result = cuDeviceGetAttribute (&major, CU_DEVICE_ATTRIBUTE_COMPUTE_CAPABILITY_MAJOR, device);
-    if (result != CUDA_SUCCESS) {
-        printf("Error code %d on cuDeviceGetAttribute\n", result);
-        exit(-1);
-    }
-
 	terminate_thread = 0;
 	
-
 	// NVML INITIALIZATIONS
 	nvResult = nvmlInit();
 	if (NVML_SUCCESS != nvResult)
@@ -182,16 +156,15 @@ int GPowerU_init() {
         printf("Device_id is out of range.\n");
         return -1;
     }
-	nvResult = nvmlDeviceGetHandleByIndex(deviceID, &nvDevice);
-	if (NVML_SUCCESS != nvResult)
-	{
-		printf("Failed to get handle for device 1: %s\n", nvmlErrorString(nvResult));
-		 return -1;
+
+	for(int d=0; d<device_count; d++){
+		nvResult = nvmlDeviceGetHandleByIndex(d, &nvDevice[d]);
+		if (NVML_SUCCESS != nvResult)
+		{
+			printf("Failed to get handle for device %d: %s\n",d, nvmlErrorString(nvResult));
+		 	return -1;
+		}
 	}
-	nvmlDeviceGetApplicationsClock  ( nvDevice, NVML_CLOCK_GRAPHICS, &core_clock);
-
-
-   nvmlDeviceGetApplicationsClock  ( nvDevice, NVML_CLOCK_MEM, &mem_clock);
 
 	//LAUNCH POWER SAMPLER
 	a = pthread_create(&thread_sampler, NULL, threadWork, &start_time);
@@ -209,26 +182,23 @@ int GPowerU_init() {
 void grapher(){
 	auto c1 = new TCanvas("c1","PowerMeas",200,10,700,500);
    c1->SetGrid();
-	TGraphErrors *gr1  = new TGraphErrors("data/nvml_power_profile.csv", "%lg;%lg");
-	//gr1->SetMarkerStyle(1);
-	//gr1->SetMarkerSize(1);
+	TGraphErrors *gr1  = new TGraphErrors("data/nvml_power_profile0.csv", "%lg;%lg");
    gr1->Draw("AP");
    gr1->SetTitle("GPU Power Measurement (GPowerU) ;" "Time (s);" "Power (W)");
    
-   
+#if MULTIGPU_DISABLED    
    TGraphErrors *gr2  = new TGraphErrors("data/power_checkpoints.csv", "%lg;%lg");
    gr2->SetMarkerColor(4);
    gr2->SetMarkerStyle(20);
 	gr2->SetMarkerSize(1.5);
    gr2->Draw("P");
-  
-   
+#endif
    
    c1->Print("data/gpu_graph.pdf");
 }
 #endif
 
-#if MULTIGPU_ENABLED
+#if MULTIGPU_DISABLED
 //Checkpoint power measure __device__ function ==> last to be set =1 for the latest func call
 __device__ void take_GPU_time(bool last = 0){
 	static int i=0;
@@ -257,9 +227,9 @@ void GPowerU_checkpoints(){
   			for(int i = n_saved_points; i < max_points+1; i++){
   				if(kernel_checkpoints[i]==1) {
 					gettimeofday(&tv_aux,NULL);
-   				nvResult = nvmlDeviceGetPowerUsage(nvDevice, &power);
+   				nvResult = nvmlDeviceGetPowerUsage(nvDevice[0], &power);
    				device_times[i] = (tv_aux.tv_sec - start_time.tv_sec )*1000000;
-         		device_times[i] += (tv_aux.tv_usec - start_time.tv_usec)-thread_times[0];
+         		device_times[i] += (tv_aux.tv_usec - start_time.tv_usec)-thread_times[0][0];
          		device_powers[i] = power;
         			kernel_checkpoints[i]=0;
         			n_saved_points++;	
