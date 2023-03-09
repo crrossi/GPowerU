@@ -50,10 +50,10 @@ int GPowerU_init(); //Initializations ==> enable the NVML library, starts CPU th
 void grapher(); //ROOT graph making function
 #endif
 
-#if MULTIGPU_DISABLED
+
 __device__ void take_GPU_time(bool last); //Checkpoint power measure __device__ function 
 void GPowerU_checkpoints(); //Checkpoint power measure CPU function 
-#endif
+
 int GPowerU_end(); //Ends power monitoring, returns data output files
 
 

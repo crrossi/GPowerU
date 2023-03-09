@@ -16,7 +16,7 @@
   	{
       int index = blockIdx.x * blockDim.x + threadIdx.x;
       int stride = blockDim.x * gridDim.x;
-//    take_GPU_time(); //Checkpoint power measure __device__ function
+    	take_GPU_time(); //Checkpoint power measure __device__ function
       __syncthreads();
       
       
@@ -26,20 +26,20 @@
        
       __syncthreads();
       
-  //    take_GPU_time(); //Checkpoint power measure __device__ function
+      take_GPU_time(); //Checkpoint power measure __device__ function
       for (int i = index; i < n; i += stride){
       	for(int k=0; k<1000; k++) y[i] = x[i] + y[i];
       }
       __syncthreads();
       
-    //  take_GPU_time(); //Checkpoint power measure __device__ function
+      take_GPU_time(); //Checkpoint power measure __device__ function
       for (int i = index; i < n; i += stride){
       	for(int k=0; k<10000; k++) y[i] = x[i] + y[i];
         }
       __syncthreads();
 		
 		
-     // take_GPU_time(true); //Checkpoint power measure __device__ function (last)
+      take_GPU_time(true); //Checkpoint power measure __device__ function (last)
     } 
  
 
@@ -57,6 +57,7 @@ int main( int argc, char** argv)
 		fprintf ( stderr, "%s: error: initializing...\n", argv[0] );
 			_exit (1);
 	}
+#if MULTIGPU_DISABLED	
       	int N =1<<20;
       	float *x, *y;
       
@@ -75,12 +76,14 @@ int main( int argc, char** argv)
       	add<<<numBlocks, blockSize>>>(N, x, y);
       
        	//Checkpoint power measure CPU function ==> it calls its own cudaDeviceSynchronize() 
-     		//GPowerU_checkpoints();
-     		cudaDeviceSynchronize();
+     		GPowerU_checkpoints();
       	// Free memory
       	checkCudaErrors(cudaFree(x));
       	checkCudaErrors(cudaFree(y));
      	
+#else
+		system("/dibona_work_storage/nfs-shared/lib/src/likwid-5.2.2/test/triadCU");
+#endif     	
      	//Ends power monitoring, returns data output files
       	if ( GPowerU_end(2) != 0 )
 	{

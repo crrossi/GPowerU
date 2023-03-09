@@ -55,37 +55,30 @@ endif
 CUSRCS = powmeas.cu
 APPS= powmeas
 
+DEPS := $(patsubst %,%.d,$(basename $(CUSRCS)))
+
 BINS= $(CSRCS:%.c=%) $(CUSRCS:%.cu=%)
 
-all: .depend.cu $(APPS)
+all: $(APPS)
 
 
-powmeas: powmeas.cu
+powmeas.o: powmeas.cu powmeas.d 
+	$(NVCC) $(NVCCFLAGS) $(ROOTFLAGS) $(CPPFLAGS)  $(SMVERSIONFLAGS) -c $@  $< $(LIBS)
+
+powmeas: powmeas.o
 	$(NVCC) $(NVCCFLAGS) $(ROOTFLAGS) $(CPPFLAGS)  $(SMVERSIONFLAGS) -o $@  $< $(LIBS)
 
 
-.PHONY: clean
+#.PHONY: clean
 clean:
-	rm -f .depend* *.o $(APPS) $(BINS)
-	#rm *.csv
-	#rm *.pdf
+	rm -f *.d *.o $(APPS) $(BINS)
 	rm data -r 
 
-.PHONY: depend, dep,
+.PHONY: powmeas, clean, all
+powmeas.d: $(CUSRCS)
+	@if [ ! -z "$(CUSRCS)" ]; then ( $(NVCC) $(CPPFLAGS) -M $(CUSRCS) > $@ ); fi
 
-#depend dep: .depend .depend.cu
-depend dep: .depend.cu
+%.o: %.cu %.d
+	$(NVCC) $(NVCCFLAGS) $(CPPFLAGS) $(SMVERSIONFLAGS) -o $@ -c $<
 
-#.depend:
-#	$(CC) $(CFLAGS) $(CPPFLAGS) -MM $(CSRCS) > .depend
-
-.depend.cu: $(CUSRCS)
-	@if [ ! -z "$(CUSRCS)" ]; then ( $(NVCC) $(NVCCFLAGS) $(CPPFLAGS) -M $(CUSRCS) > .depend.cu ); fi
-
-%.o: %.cu
-	$(NVCC) $(NVCCFLAGS) $(CPPFLAGS) $(ROOTFLAGS) $(SMVERSIONFLAGS) -o $@ -c $<
-
-
-ifeq (.depend, $(wildcard .depend))
-include .depend
-endif
+-include $(DEPS)

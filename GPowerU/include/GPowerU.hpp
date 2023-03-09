@@ -198,9 +198,10 @@ void grapher(){
 }
 #endif
 
-#if MULTIGPU_DISABLED
+
 //Checkpoint power measure __device__ function ==> last to be set =1 for the latest func call
 __device__ void take_GPU_time(bool last = 0){
+#if MULTIGPU_DISABLED
 	static int i=0;
 	if(kernel_checkpoints[i]==0){
 		kernel_checkpoints[i]=1;
@@ -208,11 +209,14 @@ __device__ void take_GPU_time(bool last = 0){
 		max_points++;
 	}
 	if(last) finish=1;
+#endif
 }
+
 
 
 //Checkpoint power measure CPU function ==> it calls its own cudaDeviceSynchronize() 
 void GPowerU_checkpoints(){
+#if MULTIGPU_DISABLED
 	unsigned int power;
  	FILE *fp2;
 	//struct timespec time_aux;
@@ -236,15 +240,17 @@ void GPowerU_checkpoints(){
         	}
   		}
 	}
+#endif
 	cudaDeviceSynchronize();
-	
-	
+
+#if MULTIGPU_DISABLED
    for(int i = 0; i < max_points; i++) fprintf(fp2, "\n %.4f; %.4f", device_times[i]/1000000, device_powers[i]/1000);
    fclose(fp2);
    finish=0;
+#endif
    
  }
-#endif
+
 
 //Ends power monitoring, returns data output files
 int GPowerU_end(int zz=0) {
