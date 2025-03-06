@@ -48,7 +48,7 @@ ifeq ($(TURING), y)
 endif
 
 ifeq ($(AMPERE), y)
-    SMVERSIONFLAGS +=  -gencode arch=compute_75,code=sm_75 
+    SMVERSIONFLAGS +=  -gencode arch=compute_80,code=sm_80 
 endif
 
 
