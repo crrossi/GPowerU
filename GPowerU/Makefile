@@ -5,8 +5,8 @@ DEBUG=n
 KEPLER=n
 PASCAL=n
 VOLTA=n
-TURING=y
-AMPERE=n
+TURING=n
+AMPERE=y
 
 CUDA_INSTALL_PATH ?= /usr/local/cuda
 
@@ -15,7 +15,7 @@ CPPFLAGS = -D_REENTRANT=1 -D_XOPEN_SOURCE=600 \
            -I ./include
 CC = gcc
 CXX = g++
-NVCC	:= $(CUDA_INSTALL_PATH)/bin/nvcc
+NVCC	:= nvcc  #$(CUDA_INSTALL_PATH)/bin/nvcc
 NVCCFLAGS :=  -ccbin $(CXX) -m64 --ptxas-options=-v  -maxrregcount=255 
 #ROOTFLAGS := -I/usr/include/root -L/usr/lib64/root -lCore -lImt -lRIO -lNet -lHist -lGraf -lGraf3d -lGpad -lROOTVecOps -lTree -lTreePlayer -lRint -lPostscript -lMatrix -lPhysics -lMathCore -lThread -lMultiProc -lROOTDataFrame -lm -ldl
 
@@ -48,7 +48,7 @@ ifeq ($(TURING), y)
 endif
 
 ifeq ($(AMPERE), y)
-    SMVERSIONFLAGS +=  -gencode arch=compute_80,code=sm_80 
+    SMVERSIONFLAGS +=  -gencode arch=compute_80,code=sm_80
 endif
 
 
@@ -71,8 +71,8 @@ powmeas: powmeas.o
 
 #.PHONY: clean
 clean:
-	rm -f *.d *.o $(APPS) $(BINS)
-	rm data -r 
+	$(RM)  *.d *.o $(APPS) $(BINS)
+	$(RM) data -r 
 
 .PHONY: powmeas, clean, all
 powmeas.d: $(CUSRCS)

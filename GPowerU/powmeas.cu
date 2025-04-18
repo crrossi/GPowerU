@@ -1,4 +1,6 @@
 #include <iostream>
+#include <sstream>
+#include <iomanip>
 #include <math.h>
 #include "nvml.h"
 #include "helper_cuda.h"
@@ -8,7 +10,9 @@
 //#include <time.h>
 //#include <sys/time.h>
 
- 
+
+//Output: data directory created, with a single text file per GPU (named hostname+GPU_uuid) with two semicolon-separated columns: Timestamp [us];Power measure [W]
+
 // CUDA kernel to add elements of two arrays with loops designed to stress the GPU
 // and extend the kernel execution
  __global__
@@ -82,7 +86,8 @@ int main( int argc, char** argv)
       	checkCudaErrors(cudaFree(y));
      	
 #else
-		system("/dibona_work_storage/nfs-shared/lib/src/likwid-5.2.2/test/triadCU");
+		//Add here your executable/script
+		system("python ....py");
 #endif     	
      	//Ends power monitoring, returns data output files
       	if ( GPowerU_end(2) != 0 )

@@ -16,6 +16,7 @@
 #include <time.h>
 #include <sys/time.h>
 #include <sys/stat.h>
+#include <limits.h>
 
 #include <cuda.h>
 
@@ -64,6 +65,11 @@ int GPowerU_end(); //Ends power monitoring, returns data output files
 int terminate_thread; //END PROGRAM
 
 nvmlDevice_t nvDevice[MAX_DEVICES];
+char uuid[NVML_DEVICE_UUID_V2_BUFFER_SIZE*MAX_DEVICES];
+char hostname[HOST_NAME_MAX];
+char username[LOGIN_NAME_MAX];
+
+
 //__managed__ nvmlReturn_t nvResult;
 nvmlReturn_t nvResult;
 

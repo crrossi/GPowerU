@@ -75,14 +75,23 @@ float DataOutput() {
    power_peak=0;
 	
 	FILE  *fp2;
-	
+        gethostname(hostname, HOST_NAME_MAX);
+        getlogin_r(username, LOGIN_NAME_MAX);
+
+
 	for(int d=0; d < device_count; d++){
 		std::string s = "data/nvml_power_profile";
 		s = s + std::to_string(d);
+
+		// Convert UUID to a string
+		std::string uuid_str(uuid+d*NVML_DEVICE_UUID_V2_BUFFER_SIZE, NVML_DEVICE_UUID_V2_BUFFER_SIZE);
+		s = s + "_" + hostname + "_" + uuid_str;
+		/////
+
 		s = s + ".csv";
 		fp2 = fopen(s.c_str(), "w+");
 
-		fprintf(fp2,"#sep=;\n#Timestamp [us];Power measure [W]");
+		fprintf(fp2,"#sep=;\n#login: %s #node: %s\n#Timestamp [us];Power measure [W]", username, hostname);
 
 		for(int i=0; i<n_values; i++) {
         fprintf(fp2, "\n%.6f;%.4f", (thread_times[d][i]-thread_times[d][0])/1000000, thread_powers[d][i]/1000.0);
@@ -164,7 +173,17 @@ int GPowerU_init() {
 			printf("Failed to get handle for device %d: %s\n",d, nvmlErrorString(nvResult));
 		 	return -1;
 		}
+	
+
+		////// LP
+		nvResult = nvmlDeviceGetUUID(nvDevice[d], &uuid[d*NVML_DEVICE_UUID_V2_BUFFER_SIZE], NVML_DEVICE_UUID_V2_BUFFER_SIZE);
+		if (NVML_SUCCESS != nvResult) {
+		    	printf("Failed to get UUID for device %d: %s\n",d, nvmlErrorString(nvResult));
+		    	return -1;
+		}
+		/////
 	}
+
 
 	//LAUNCH POWER SAMPLER
 	a = pthread_create(&thread_sampler, NULL, threadWork, &start_time);
